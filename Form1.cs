@@ -35,6 +35,29 @@ namespace Math_Game_Server
             server.Stop();
             this.Close();
         }
+
+        private void log_out(object sender, EventArgs e)
+        {
+            log_out_bt.Visible = false;
+            name.Visible = true;
+            password.Visible = true;
+            log_in_bt.Visible=false;
+            dataGridView1.Visible = false;
+            log_in_bt.Visible = true;
+        }
+
+        private void log_in(object sender, EventArgs e)
+        {
+            if(name.Text == "admin" &&  password.Text == "admin")
+            {
+                name.Visible = false;
+                password.Visible = false;
+                log_in_bt.Visible = false;
+                log_out_bt.Visible = true;
+                dataGridView1.Visible = true;
+                dataGridView1.DataSource = DataBase.show("SELECT * FROM Scores");
+            }
+        }
     }
 
 }
