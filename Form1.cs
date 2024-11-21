@@ -44,19 +44,28 @@ namespace Math_Game_Server
             log_in_bt.Visible=false;
             dataGridView1.Visible = false;
             log_in_bt.Visible = true;
+            comboBox1.Visible = false;
         }
 
         private void log_in(object sender, EventArgs e)
         {
             if(name.Text == "admin" &&  password.Text == "admin")
             {
+                name.Text = "";
                 name.Visible = false;
+                password.Text = "";
                 password.Visible = false;
                 log_in_bt.Visible = false;
                 log_out_bt.Visible = true;
                 dataGridView1.Visible = true;
+                comboBox1.Visible = true;
                 dataGridView1.DataSource = DataBase.show("SELECT * FROM Scores");
             }
+        }
+
+        private void tableShow(object sender, EventArgs e)
+        {
+            dataGridView1.DataSource = DataBase.show("SELECT * FROM " + comboBox1.SelectedItem?.ToString());
         }
     }
 

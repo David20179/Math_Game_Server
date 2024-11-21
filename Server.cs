@@ -1,5 +1,8 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
+using System.Data;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
@@ -60,27 +63,103 @@ namespace Math_Game_Server
             {
                 if (_httpListener == null || !_httpListener.IsListening) return;
 
-                // Get the incoming request
                 HttpListenerContext context = _httpListener.EndGetContext(result);
                 HttpListenerRequest request = context.Request;
-
-                Console.WriteLine($"Request received: {request.HttpMethod} {request.Url}");
-
-                // Respond to the client
                 HttpListenerResponse response = context.Response;
                 response.ContentType = "application/json";
-                response.StatusCode = (int)HttpStatusCode.OK;
+                string jsonResponse = string.Empty;
 
-                // Create the JSON message
-                string jsonResponse = "{ \"message\": \"Good morning\" }";
+                // Route the request based on the URL and HTTP method
+                if (request.HttpMethod == "POST" && request.Url.AbsolutePath == "/register")
+                {
+                    // Handle user registration
+                    using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
+                    {
+                        string requestBody = reader.ReadToEnd();
+                        try
+                        {
+                            dynamic userData = Newtonsoft.Json.JsonConvert.DeserializeObject(requestBody);
+                            string name = userData["name"]?.ToString();
 
-                // Write the JSON to the response
+                            if (!string.IsNullOrEmpty(name))
+                            {
+                                // Generate random ID
+                                Random random = new Random();
+                                int randomId = random.Next(100, 1000); // Generate a 3-digit random number
+                                int userId = DataBase.idNumber();
+                                string generatedUsername = $"{name}#" + userId;
+
+                                // Insert into the database
+                                string command = $"INSERT INTO Users (user_id, user_name) VALUES ({userId}, '{generatedUsername}')";
+                                string resolt = DataBase.userAdd(command);
+
+                                if (resolt.Equals("Success"))
+                                {
+                                    jsonResponse = $"{{\"username\": \"{generatedUsername}\"}}";
+                                    response.StatusCode = (int)HttpStatusCode.Created;
+                                }
+                                else
+                                {
+                                    jsonResponse = "{\"error\": \"Failed to register user.\"}";
+                                    response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                                }
+                            }
+                            else
+                            {
+                                jsonResponse = "{\"error\": \"Name cannot be empty.\"}";
+                                response.StatusCode = (int)HttpStatusCode.BadRequest;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            jsonResponse = $"{{\"error\": \"Error processing registration: {ex.Message}\"}}";
+                            response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                        }
+                    }
+
+                }
+                else if (request.HttpMethod == "GET" && request.Url.AbsolutePath == "/highscore")
+                {
+                    // Handle high score retrieval
+                    try
+                    {
+                        string command = "SELECT TOP 1 Username, HighScore FROM Users ORDER BY HighScore DESC";
+                        DataTable dt = DataBase.show(command);
+
+                        if (dt.Rows.Count > 0)
+                        {
+                            var row = dt.Rows[0];
+                            string username = row["Username"].ToString();
+                            int highScore = Convert.ToInt32(row["HighScore"]);
+
+                            jsonResponse = $"{{\"username\": \"{username}\", \"highscore\": {highScore}}}";
+                            response.StatusCode = (int)HttpStatusCode.OK;
+                        }
+                        else
+                        {
+                            jsonResponse = "{\"message\": \"No high scores available.\"}";
+                            response.StatusCode = (int)HttpStatusCode.NotFound;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        jsonResponse = $"{{\"error\": \"Error retrieving high score: {ex.Message}\"}}";
+                        response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                    }
+                }
+                else
+                {
+                    jsonResponse = "{\"error\": \"Endpoint not found.\"}";
+                    response.StatusCode = (int)HttpStatusCode.NotFound;
+                }
+
+                // Send the response
                 byte[] buffer = Encoding.UTF8.GetBytes(jsonResponse);
                 response.ContentLength64 = buffer.Length;
                 response.OutputStream.Write(buffer, 0, buffer.Length);
                 response.OutputStream.Close();
 
-                Console.WriteLine("Response sent successfully.");
+                Console.WriteLine($"Response sent: {jsonResponse}");
 
                 // Keep listening for other requests
                 _httpListener.BeginGetContext(OnRequest, null);

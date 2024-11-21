@@ -36,5 +36,58 @@ namespace Math_Game_Server
             }
             return dt;
         }
+        public static int idNumber()
+        {
+            int amount = 0;
+            using(SqlConnection conn = new SqlConnection(dataBasePath))
+            {
+                using (SqlCommand command = conn.CreateCommand())
+                {
+                    command.CommandText = "SELECT COUNT(*) FROM Users";
+                    try
+                    {
+                        conn.Open();
+                        amount = (int)command.ExecuteScalar();
+                        conn.Close();
+                        return amount;
+                    }
+                    catch (SqlException ex)
+                    {
+                        Console.WriteLine(ex.Message);
+                        return amount;
+                    }
+                }
+            }
+        }
+        public static String userAdd(String commandString)
+        {
+            String response;
+            using(SqlConnection conn = new SqlConnection(dataBasePath))
+            {
+                using(SqlCommand command = conn.CreateCommand())
+                {
+                    command.CommandText = commandString;
+                    try
+                    {
+                        conn.Open();
+                        int rowsAffected = command.ExecuteNonQuery();
+                        if(rowsAffected > 0)
+                        {
+                            response = "Success";
+                        }
+                        else
+                        {
+                            response = "Wrong Sql";
+                        }
+                    }
+                    catch(SqlException ex)
+                    {
+                        Console.WriteLine(ex.Message);
+                        response = "Something whent wrong with the Sql";
+                    }
+                }
+            }
+            return response;
+        }
     }
 }
