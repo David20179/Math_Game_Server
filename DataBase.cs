@@ -89,5 +89,32 @@ namespace Math_Game_Server
             }
             return response;
         }
+        public static void delet(String commandString)
+        {
+            using (SqlConnection conn = new SqlConnection(dataBasePath))
+            {
+                using (SqlCommand command = conn.CreateCommand())
+                {
+                    command.CommandText = commandString;
+                    try
+                    {
+                        conn.Open();
+                        int rowsAffected = command.ExecuteNonQuery();
+                        if(rowsAffected > 0)
+                        {
+                            Console.WriteLine("Record deleted successfully.");
+                        }
+                        else
+                        {
+                            Console.WriteLine("No records were deleted.");
+                        }
+                    }
+                    catch(SqlException ex)
+                    {
+                        Console.WriteLine(ex.Message);
+                    }
+                }
+            }
+        }
     }
 }

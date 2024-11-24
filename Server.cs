@@ -67,85 +67,24 @@ namespace Math_Game_Server
                 HttpListenerRequest request = context.Request;
                 HttpListenerResponse response = context.Response;
                 response.ContentType = "application/json";
+
                 string jsonResponse = string.Empty;
 
                 // Route the request based on the URL and HTTP method
                 if (request.HttpMethod == "POST" && request.Url.AbsolutePath == "/register")
                 {
-                    // Handle user registration
-                    using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
-                    {
-                        string requestBody = reader.ReadToEnd();
-                        try
-                        {
-                            dynamic userData = Newtonsoft.Json.JsonConvert.DeserializeObject(requestBody);
-                            string name = userData["name"]?.ToString();
-
-                            if (!string.IsNullOrEmpty(name))
-                            {
-                                // Generate random ID
-                                Random random = new Random();
-                                int randomId = random.Next(100, 1000); // Generate a 3-digit random number
-                                int userId = DataBase.idNumber();
-                                string generatedUsername = $"{name}#" + userId;
-
-                                // Insert into the database
-                                string command = $"INSERT INTO Users (user_id, user_name) VALUES ({userId}, '{generatedUsername}')";
-                                string resolt = DataBase.userAdd(command);
-
-                                if (resolt.Equals("Success"))
-                                {
-                                    jsonResponse = $"{{\"username\": \"{generatedUsername}\"}}";
-                                    response.StatusCode = (int)HttpStatusCode.Created;
-                                }
-                                else
-                                {
-                                    jsonResponse = "{\"error\": \"Failed to register user.\"}";
-                                    response.StatusCode = (int)HttpStatusCode.InternalServerError;
-                                }
-                            }
-                            else
-                            {
-                                jsonResponse = "{\"error\": \"Name cannot be empty.\"}";
-                                response.StatusCode = (int)HttpStatusCode.BadRequest;
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            jsonResponse = $"{{\"error\": \"Error processing registration: {ex.Message}\"}}";
-                            response.StatusCode = (int)HttpStatusCode.InternalServerError;
-                        }
-                    }
-
+                    jsonResponse = HandlePostRegister(request, out int statusCode);
+                    response.StatusCode = statusCode;
                 }
                 else if (request.HttpMethod == "GET" && request.Url.AbsolutePath == "/highscore")
                 {
-                    // Handle high score retrieval
-                    try
-                    {
-                        string command = "SELECT TOP 1 Username, HighScore FROM Users ORDER BY HighScore DESC";
-                        DataTable dt = DataBase.show(command);
-
-                        if (dt.Rows.Count > 0)
-                        {
-                            var row = dt.Rows[0];
-                            string username = row["Username"].ToString();
-                            int highScore = Convert.ToInt32(row["HighScore"]);
-
-                            jsonResponse = $"{{\"username\": \"{username}\", \"highscore\": {highScore}}}";
-                            response.StatusCode = (int)HttpStatusCode.OK;
-                        }
-                        else
-                        {
-                            jsonResponse = "{\"message\": \"No high scores available.\"}";
-                            response.StatusCode = (int)HttpStatusCode.NotFound;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        jsonResponse = $"{{\"error\": \"Error retrieving high score: {ex.Message}\"}}";
-                        response.StatusCode = (int)HttpStatusCode.InternalServerError;
-                    }
+                    jsonResponse = HandleGetHighScore(out int statusCode);
+                    response.StatusCode = statusCode;
+                }
+                else if (request.HttpMethod == "GET" && request.Url.AbsolutePath == "/connection")
+                {
+                    jsonResponse = HandleConnectionTest(out int statusCode);
+                    response.StatusCode = statusCode;
                 }
                 else
                 {
@@ -154,12 +93,7 @@ namespace Math_Game_Server
                 }
 
                 // Send the response
-                byte[] buffer = Encoding.UTF8.GetBytes(jsonResponse);
-                response.ContentLength64 = buffer.Length;
-                response.OutputStream.Write(buffer, 0, buffer.Length);
-                response.OutputStream.Close();
-
-                Console.WriteLine($"Response sent: {jsonResponse}");
+                SendResponse(response, jsonResponse);
 
                 // Keep listening for other requests
                 _httpListener.BeginGetContext(OnRequest, null);
@@ -172,6 +106,98 @@ namespace Math_Game_Server
             {
                 Console.WriteLine($"Unexpected error: {ex.Message}");
             }
+        }
+
+        private string HandlePostRegister(HttpListenerRequest request, out int statusCode)
+        {
+            try
+            {
+                using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
+                {
+                    string requestBody = reader.ReadToEnd();
+                    dynamic userData = Newtonsoft.Json.JsonConvert.DeserializeObject(requestBody);
+                    string name = userData["name"]?.ToString();
+
+                    if (!string.IsNullOrEmpty(name))
+                    {
+                        int userId = DataBase.idNumber();
+                        string generatedUsername = $"{name}#" + userId;
+
+                        // Insert into the database
+                        string command = $"INSERT INTO Users (user_id, user_name) VALUES ({userId}, '{generatedUsername}')";
+                        string result = DataBase.userAdd(command);
+
+                        if (result.Equals("Success"))
+                        {
+                            statusCode = (int)HttpStatusCode.Created;
+                            return $"{{\"username\": \"{generatedUsername}\"}}";
+                        }
+                        else
+                        {
+                            statusCode = (int)HttpStatusCode.InternalServerError;
+                            return "{\"error\": \"Failed to register user.\"}";
+                        }
+                    }
+                    else
+                    {
+                        statusCode = (int)HttpStatusCode.BadRequest;
+                        return "{\"error\": \"Name cannot be empty.\"}";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                statusCode = (int)HttpStatusCode.InternalServerError;
+                return $"{{\"error\": \"Error processing registration: {ex.Message}\"}}";
+            }
+        }
+
+        private string HandleGetHighScore(out int statusCode)
+        {
+            try
+            {
+                string command = "SELECT TOP 1 Username, HighScore FROM Users ORDER BY HighScore DESC";
+                DataTable dt = DataBase.show(command);
+
+                if (dt.Rows.Count > 0)
+                {
+                    var row = dt.Rows[0];
+                    string username = row["Username"].ToString();
+                    int highScore = Convert.ToInt32(row["HighScore"]);
+
+                    statusCode = (int)HttpStatusCode.OK;
+                    return $"{{\"username\": \"{username}\", \"highscore\": {highScore}}}";
+                }
+                else
+                {
+                    statusCode = (int)HttpStatusCode.NotFound;
+                    return "{\"message\": \"No high scores available.\"}";
+                }
+            }
+            catch (Exception ex)
+            {
+                statusCode = (int)HttpStatusCode.InternalServerError;
+                return $"{{\"error\": \"Error retrieving high score: {ex.Message}\"}}";
+            }
+        }
+
+        private string HandleConnectionTest(out int statusCode)
+        {
+            statusCode = (int)HttpStatusCode.OK;
+            return "{\"message\": \"Connected\"}";
+        }
+
+        private void SendResponse(HttpListenerResponse response, string jsonResponse)
+        {
+            byte[] buffer = Encoding.UTF8.GetBytes(jsonResponse);
+            response.ContentLength64 = buffer.Length;
+
+            using (Stream output = response.OutputStream)
+            {
+                output.Write(buffer, 0, buffer.Length);
+            }
+
+            Console.WriteLine($"Response sent: {jsonResponse}");
         }
     }
 }
