@@ -69,9 +69,11 @@ namespace Math_Game_Server
                 response.ContentType = "application/json";
 
                 string jsonResponse = string.Empty;
+                Console.WriteLine("" + request.Url.AbsolutePath);
+                Console.WriteLine("" + request.HttpMethod);
 
                 // Route the request based on the URL and HTTP method
-                if (request.HttpMethod == "POST" && request.Url.AbsolutePath == "/register")
+                if (request.HttpMethod == "POST" && request.Url.AbsolutePath == "/sendUserName")
                 {
                     jsonResponse = HandlePostRegister(request, out int statusCode);
                     response.StatusCode = statusCode;
@@ -116,7 +118,7 @@ namespace Math_Game_Server
                 {
                     string requestBody = reader.ReadToEnd();
                     dynamic userData = Newtonsoft.Json.JsonConvert.DeserializeObject(requestBody);
-                    string name = userData["name"]?.ToString();
+                    string name = userData["USER_NAME"]?.ToString();
 
                     if (!string.IsNullOrEmpty(name))
                     {

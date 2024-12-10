@@ -177,7 +177,13 @@ namespace Math_Game_Server
             }
         }
 
-
+        private void max_tb_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            if (!char.IsDigit(e.KeyChar) && !char.IsControl(e.KeyChar))
+            {
+                e.Handled = true; // Block the key press
+            }
+        }
     }
 
 }
