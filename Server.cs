@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
@@ -73,27 +74,48 @@ namespace Math_Game_Server
                 Console.WriteLine("" + request.HttpMethod);
 
                 // Route the request based on the URL and HTTP method
-                if (request.HttpMethod == "POST" && request.Url.AbsolutePath == "/sendUserName")
+                if(request.HttpMethod == "POST")
                 {
-                    jsonResponse = HandlePostRegister(request, out int statusCode);
-                    response.StatusCode = statusCode;
+                    switch (request.Url.AbsolutePath)
+                    {
+                        case "/sendUserName":
+                            jsonResponse = HandlePostRegister(request, out int statusCode);
+                            response.StatusCode = statusCode;
+                            break;
+                        case "/score":
+                            Console.WriteLine("Working score");
+                            jsonResponse = HandleScoreUpdate(request, out int statusScore);
+                            response.StatusCode = statusScore;
+                            break ;
+                        default:
+                            jsonResponse = "{\"error\": \"Endpoint not found.\"}";
+                            response.StatusCode = (int)HttpStatusCode.NotFound;
+                            break;
+                    }
                 }
-                else if (request.HttpMethod == "GET" && request.Url.AbsolutePath == "/highscore")
+                else if(request.HttpMethod == "GET")
                 {
-                    jsonResponse = HandleGetHighScore(out int statusCode);
-                    response.StatusCode = statusCode;
-                }
-                else if (request.HttpMethod == "GET" && request.Url.AbsolutePath == "/connection")
-                {
-                    jsonResponse = HandleConnectionTest(out int statusCode);
-                    response.StatusCode = statusCode;
+                    switch (request.Url.AbsolutePath)
+                    {
+                        case "/highscore":
+                            jsonResponse = HandleGetHighScore(out int statusCode);
+                            response.StatusCode = statusCode;
+                            break;
+                        case "/connection":
+                            jsonResponse = HandleConnectionTest(out int statusConnection);
+                            response.StatusCode = statusConnection;
+                            break;
+                        default:
+                            jsonResponse = "{\"error\": \"Endpoint not found.\"}";
+                            response.StatusCode = (int)HttpStatusCode.NotFound;
+                            break;
+                    }
                 }
                 else
                 {
                     jsonResponse = "{\"error\": \"Endpoint not found.\"}";
                     response.StatusCode = (int)HttpStatusCode.NotFound;
                 }
-
                 // Send the response
                 SendResponse(response, jsonResponse);
 
@@ -153,22 +175,48 @@ namespace Math_Game_Server
                 return $"{{\"error\": \"Error processing registration: {ex.Message}\"}}";
             }
         }
+        private string HandleScoreUpdate(HttpListenerRequest request, out int statusCode)
+        {
+            try
+            {
+                using(var reader = new StreamReader(request.InputStream, request.ContentEncoding))
+                {
+                    string requestBody = reader.ReadToEnd();
+                    dynamic scoredata = Newtonsoft.Json.JsonConvert.DeserializeObject(requestBody);
+                    string name = scoredata["USER_NAME"]?.ToString();
+                    int score = Convert.ToInt32(scoredata["Score"]);
+                    int nameID = DataBase.userID(name);
+                    int scoreID = DataBase.idScore();
+                    String result =  DataBase.scoreAdd(scoreID, nameID, score);
+                    if(result == "Success")
+                    {
+                        statusCode= (int)HttpStatusCode.Created;
+                        return $"{{\"Result\": \"{result}\"}}";
+                    }
+                    else
+                    {
+                        statusCode = (int)HttpStatusCode.InternalServerError;
+                        return $"{{\"Result\": \"{result}\"}}";
+                    }
+                }
+            }
+            catch(Exception ex)
+            {
+                statusCode = (int)HttpStatusCode.InternalServerError;
+                return $"{{\"Result\": \"Error updating score : {ex.Message}\"}}";
+            }
+        }
 
         private string HandleGetHighScore(out int statusCode)
         {
             try
             {
-                string command = "SELECT TOP 1 Username, HighScore FROM Users ORDER BY HighScore DESC";
-                DataTable dt = DataBase.show(command);
-
-                if (dt.Rows.Count > 0)
+                String data = null;
+                data = DataBase.highScores();
+                if (!data.Equals(null))
                 {
-                    var row = dt.Rows[0];
-                    string username = row["Username"].ToString();
-                    int highScore = Convert.ToInt32(row["HighScore"]);
-
                     statusCode = (int)HttpStatusCode.OK;
-                    return $"{{\"username\": \"{username}\", \"highscore\": {highScore}}}";
+                    return data;
                 }
                 else
                 {
