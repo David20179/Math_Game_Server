@@ -194,31 +194,22 @@ namespace Math_Game_Server
                 }
             }
         }
-        public static String highScores()
+        public static String getHighScores(String userName)
         {
             using (SqlConnection connection = new SqlConnection(dataBasePath))
             {
                 using (SqlCommand command = connection.CreateCommand())
                 {
                     command.CommandText = "SELECT TOP 5 user_name, score, date FROM Scores INNER JOIN Users ON Scores.user_id = Users.user_id ORDER BY score DESC;";
+                    String formatedDate = "";
+                    String data = "{ \"Scores\": [";
                     try
                     {
                         connection.Open();
                         using (SqlDataReader reader = command.ExecuteReader())
                         {
-                            String data = "[";
-                            Boolean first = true;
                             while (reader.Read())
                             {
-                                if (first)
-                                {
-                                    first = false;
-                                }
-                                else
-                                {
-                                    data += ",";
-                                }
-                                String formatedDate = "";
                                 if (reader["date"] != DBNull.Value)
                                 {
                                     DateTime datetime = Convert.ToDateTime(reader["date"]);
@@ -226,15 +217,41 @@ namespace Math_Game_Server
                                 }
                                 data += "{\"USER_NAME\": \"" + reader["user_name"].ToString() + "\", ";
                                 data += "\"Score\": " + reader["score"].ToString() + ", ";
-                                data += "\"Date\": \"" + formatedDate + "\"} ";
+                                data += "\"Date\": \"" + formatedDate + "\"}, ";
                             }
-                            data += "]";
-                            return data;
+                            connection.Close();
                         }
                     }
                     catch (SqlException ex)
                     {
                         Console.WriteLine(ex.Message);
+                        return null;
+                    }
+                    try
+                    {
+                        connection.Open();
+                        command.CommandText = "SELECT TOP 1 user_name, score, date FROM Scores INNER JOIN Users ON Scores.user_id = Users.user_id WHERE user_name = \'" + userName + "\';";
+                        using (SqlDataReader readUser = command.ExecuteReader())
+                        {
+                            readUser.Read();
+                            if (readUser["date"] != DBNull.Value)
+                            {
+                                DateTime datetime = Convert.ToDateTime(readUser["date"]);
+                                formatedDate = datetime.ToString("dd/MM/yyyy");
+                            }
+                            data += "{\"USER_NAME\": \"" + readUser["user_name"].ToString() + "\", ";
+                            data += "\"Score\": " + readUser["score"].ToString() + ", ";
+                            data += "\"Date\": \"" + formatedDate + "\"}";
+                        }
+                        connection.Close();
+                        data += "]}";
+                        Console.WriteLine(data);
+                        return data;
+                    }
+                    catch (SqlException ex)
+                    {
+                        Console.WriteLine(ex.Message);
+                        Console.WriteLine(data);
                         return null;
                     }
                 }

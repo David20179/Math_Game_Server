@@ -87,6 +87,10 @@ namespace Math_Game_Server
                             jsonResponse = HandleScoreUpdate(request, out int statusScore);
                             response.StatusCode = statusScore;
                             break ;
+                        case "/highscore":
+                            jsonResponse = HandleGetHighScore(request, out int statusHighScore);
+                            response.StatusCode = statusHighScore;
+                            break;
                         default:
                             jsonResponse = "{\"error\": \"Endpoint not found.\"}";
                             response.StatusCode = (int)HttpStatusCode.NotFound;
@@ -97,10 +101,6 @@ namespace Math_Game_Server
                 {
                     switch (request.Url.AbsolutePath)
                     {
-                        case "/highscore":
-                            jsonResponse = HandleGetHighScore(out int statusCode);
-                            response.StatusCode = statusCode;
-                            break;
                         case "/connection":
                             jsonResponse = HandleConnectionTest(out int statusConnection);
                             response.StatusCode = statusConnection;
@@ -207,21 +207,27 @@ namespace Math_Game_Server
             }
         }
 
-        private string HandleGetHighScore(out int statusCode)
+        private string HandleGetHighScore( HttpListenerRequest request, out int statusCode)
         {
             try
             {
-                String data = null;
-                data = DataBase.highScores();
-                if (!data.Equals(null))
+                using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
                 {
-                    statusCode = (int)HttpStatusCode.OK;
-                    return data;
-                }
-                else
-                {
-                    statusCode = (int)HttpStatusCode.NotFound;
-                    return "{\"message\": \"No high scores available.\"}";
+                    string requestBody = reader.ReadToEnd();
+                    dynamic scoredata = Newtonsoft.Json.JsonConvert.DeserializeObject(requestBody);
+                    string userName = scoredata["USER_NAME"]?.ToString();
+                    String data = "wrong";
+                    data = DataBase.getHighScores(userName);
+                    if (!data.Equals("wrong"))
+                    {
+                        statusCode = (int)HttpStatusCode.OK;
+                        return data;
+                    }
+                    else
+                    {
+                        statusCode = (int)HttpStatusCode.NotFound;
+                        return "{\"message\": \"No high scores available.\"}";
+                    }
                 }
             }
             catch (Exception ex)
