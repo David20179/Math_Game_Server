@@ -227,32 +227,42 @@ namespace Math_Game_Server
                         Console.WriteLine(ex.Message);
                         return null;
                     }
-                    try
+                    if (!userName.Equals("Guest"))
                     {
-                        connection.Open();
-                        command.CommandText = "SELECT TOP 1 user_name, score, date FROM Scores INNER JOIN Users ON Scores.user_id = Users.user_id WHERE user_name = \'" + userName + "\';";
-                        using (SqlDataReader readUser = command.ExecuteReader())
+                        try
                         {
-                            readUser.Read();
-                            if (readUser["date"] != DBNull.Value)
+                            connection.Open();
+                            command.CommandText = "SELECT TOP 1 user_name, score, date FROM Scores INNER JOIN Users ON Scores.user_id = Users.user_id WHERE user_name = \'" + userName + "\';";
+                            using (SqlDataReader readUser = command.ExecuteReader())
                             {
-                                DateTime datetime = Convert.ToDateTime(readUser["date"]);
-                                formatedDate = datetime.ToString("dd/MM/yyyy");
+                                readUser.Read();
+                                if (readUser["date"] != DBNull.Value)
+                                {
+                                    DateTime datetime = Convert.ToDateTime(readUser["date"]);
+                                    formatedDate = datetime.ToString("dd/MM/yyyy");
+                                }
+                                data += "{\"USER_NAME\": \"" + readUser["user_name"].ToString() + "\", ";
+                                data += "\"Score\": " + readUser["score"].ToString() + ", ";
+                                data += "\"Date\": \"" + formatedDate + "\"}";
                             }
-                            data += "{\"USER_NAME\": \"" + readUser["user_name"].ToString() + "\", ";
-                            data += "\"Score\": " + readUser["score"].ToString() + ", ";
-                            data += "\"Date\": \"" + formatedDate + "\"}";
+                            connection.Close();
+                            data += "]}";
+                            Console.WriteLine(data);
+                            return data;
                         }
-                        connection.Close();
-                        data += "]}";
-                        Console.WriteLine(data);
-                        return data;
+                        catch (SqlException ex)
+                        {
+                            Console.WriteLine(ex.Message);
+                            Console.WriteLine(data);
+                            return null;
+                        }
                     }
-                    catch (SqlException ex)
+                    else
                     {
-                        Console.WriteLine(ex.Message);
-                        Console.WriteLine(data);
-                        return null;
+                        int lstIndex = data.LastIndexOf(", ");
+                        data = data.Remove(lstIndex, 2);
+                        data += "]}";
+                        return data;
                     }
                 }
             }

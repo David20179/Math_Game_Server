@@ -218,6 +218,7 @@ namespace Math_Game_Server
                     string userName = scoredata["USER_NAME"]?.ToString();
                     String data = "wrong";
                     data = DataBase.getHighScores(userName);
+                    Console.WriteLine(data);
                     if (!data.Equals("wrong"))
                     {
                         statusCode = (int)HttpStatusCode.OK;
