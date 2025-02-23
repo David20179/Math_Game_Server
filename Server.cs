@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -82,11 +83,11 @@ namespace Math_Game_Server
                             jsonResponse = HandlePostRegister(request, out int statusCode);
                             response.StatusCode = statusCode;
                             break;
-                        case "/score":
+                        /*case "/score":
                             Console.WriteLine("Working score");
                             jsonResponse = HandleScoreUpdate(request, out int statusScore);
                             response.StatusCode = statusScore;
-                            break ;
+                            break ;*/
                         case "/highscore":
                             jsonResponse = HandleGetHighScore(request, out int statusHighScore);
                             response.StatusCode = statusHighScore;
@@ -213,11 +214,10 @@ namespace Math_Game_Server
             {
                 using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
                 {
-                    string requestBody = reader.ReadToEnd();
+                    String requestBody = reader.ReadToEnd();
                     dynamic scoredata = Newtonsoft.Json.JsonConvert.DeserializeObject(requestBody);
-                    string userName = scoredata["USER_NAME"]?.ToString();
                     String data = "wrong";
-                    data = DataBase.getHighScores(userName);
+                    data = DataBase.getHighScores(scoredata);
                     Console.WriteLine(data);
                     if (!data.Equals("wrong"))
                     {

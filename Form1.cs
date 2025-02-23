@@ -74,7 +74,7 @@ namespace Math_Game_Server
                 max_tb.Visible = true;
                 search_bt.Visible = true;
                 remove_bt.Visible = true;
-                //comboBox1.Visible = true;
+                comboBox1.Visible = true;
                 dataGridView1.DataSource = DataBase.show("SELECT s.score_id, u.user_name, s.score, s.date FROM dbo.Scores s JOIN dbo.Users u ON s.user_id = u.user_id ORDER BY s.score_id;");
             }
             else

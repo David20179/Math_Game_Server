@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Data;
 using System.Data.SqlClient;
 using System.Data.Common;
+using Newtonsoft.Json.Linq;
 
 namespace Math_Game_Server
 {
@@ -194,12 +195,45 @@ namespace Math_Game_Server
                 }
             }
         }
-        public static String getHighScores(String userName)
+        public static String getHighScores(dynamic scoredata)
         {
+            String userName = scoredata["USER_NAME"]?.ToString();
+            String upload = scoredata["upload"]?.ToString();
             using (SqlConnection connection = new SqlConnection(dataBasePath))
             {
                 using (SqlCommand command = connection.CreateCommand())
                 {
+                    if (upload.Equals("true", StringComparison.OrdinalIgnoreCase))
+                    {
+                        int scoreID = idScore() + 1;
+                        try
+                        {
+                            JArray scoresArray = scoredata["scores"] as JArray;
+                            String sql = $"INSERT INTO Scores (score_id, user_id, score, date) VALUES ";
+                            String[] splitedName = new string[2];
+                            var valuesList = new List<string>();
+                            foreach (JObject scoreObject in scoresArray)
+                            {
+                                String name = scoreObject["name"]?.ToString();
+                                splitedName = name.Split('#');
+                                int score = ( (int) scoreObject["score"]);
+                                String date = scoreObject["date"]?.ToString();
+
+                                valuesList.Add($"('{scoreID}', '{splitedName[1]}', '{score}', '{date}')");
+                                scoreID++;
+                            }
+                            sql += string.Join(",", valuesList);
+                            connection.Open();
+                            command.CommandText = sql;
+                            command.ExecuteNonQuery();
+                            connection.Close();
+                        }
+                        catch(Exception ex)
+                        {
+                            Console.WriteLine(ex);
+                        }
+
+                    }
                     command.CommandText = "SELECT TOP 5 user_name, score, date FROM Scores INNER JOIN Users ON Scores.user_id = Users.user_id ORDER BY score DESC;";
                     String formatedDate = "";
                     String data = "{ \"Scores\": [";
