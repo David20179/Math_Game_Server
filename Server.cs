@@ -77,10 +77,12 @@ namespace Math_Game_Server
                 // Route the request based on the URL and HTTP method
                 if(request.HttpMethod == "POST")
                 {
+                    Console.WriteLine(request);
                     switch (request.Url.AbsolutePath)
                     {
                         case "/sendUserName":
                             jsonResponse = HandlePostRegister(request, out int statusCode);
+                            Console.WriteLine(statusCode);
                             response.StatusCode = statusCode;
                             break;
                         /*case "/score":
@@ -212,11 +214,15 @@ namespace Math_Game_Server
         {
             try
             {
+                Console.WriteLine("in try");
                 using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
                 {
+                    Console.WriteLine("before read");
                     String requestBody = reader.ReadToEnd();
+                    Console.WriteLine("before dynamic");
                     dynamic scoredata = Newtonsoft.Json.JsonConvert.DeserializeObject(requestBody);
                     String data = "wrong";
+                    Console.WriteLine("before method");
                     data = DataBase.getHighScores(scoredata);
                     Console.WriteLine(data);
                     if (!data.Equals("wrong"))

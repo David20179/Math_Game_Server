@@ -7,6 +7,8 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Data.Common;
 using Newtonsoft.Json.Linq;
+using System.Windows.Forms;
+using System.Xml.Linq;
 
 namespace Math_Game_Server
 {
@@ -197,8 +199,11 @@ namespace Math_Game_Server
         }
         public static String getHighScores(dynamic scoredata)
         {
+            Console.WriteLine("Received high score request");
             String userName = scoredata["USER_NAME"]?.ToString();
+            Console.WriteLine(userName);
             String upload = scoredata["upload"]?.ToString();
+            Console.WriteLine(upload);
             using (SqlConnection connection = new SqlConnection(dataBasePath))
             {
                 using (SqlCommand command = connection.CreateCommand())
@@ -215,6 +220,13 @@ namespace Math_Game_Server
                             foreach (JObject scoreObject in scoresArray)
                             {
                                 String name = scoreObject["name"]?.ToString();
+                                Console.WriteLine(name);
+                                Console.WriteLine(name);
+                                Console.WriteLine(name);
+                                if (name == null)
+                                {
+                                    goto Skipped;
+                                }
                                 splitedName = name.Split('#');
                                 int score = ( (int) scoreObject["score"]);
                                 String date = scoreObject["date"]?.ToString();
@@ -234,6 +246,7 @@ namespace Math_Game_Server
                         }
 
                     }
+                    Skipped: 
                     command.CommandText = "SELECT TOP 5 user_name, score, date FROM Scores INNER JOIN Users ON Scores.user_id = Users.user_id ORDER BY score DESC;";
                     String formatedDate = "";
                     String data = "{ \"Scores\": [";
@@ -244,7 +257,7 @@ namespace Math_Game_Server
                         {
                             while (reader.Read())
                             {
-                                if (reader["date"] != DBNull.Value)
+                                if (reader["date"] != DBNull.Value && reader["date"] is DateTime)
                                 {
                                     DateTime datetime = Convert.ToDateTime(reader["date"]);
                                     formatedDate = datetime.ToString("dd/MM/yyyy");
@@ -261,7 +274,11 @@ namespace Math_Game_Server
                         Console.WriteLine(ex.Message);
                         return null;
                     }
-                    if (!userName.Equals("Guest"))
+                    if (userName == null)
+                    {
+                        goto Valami;
+                    }
+                    if (userName != null || !userName.Equals("Guest"))
                     {
                         try
                         {
@@ -291,13 +308,11 @@ namespace Math_Game_Server
                             return null;
                         }
                     }
-                    else
-                    {
-                        int lstIndex = data.LastIndexOf(", ");
-                        data = data.Remove(lstIndex, 2);
-                        data += "]}";
-                        return data;
-                    }
+                    Valami:
+                    int lstIndex = data.LastIndexOf(", ");
+                    data = data.Remove(lstIndex, 2);
+                    data += "]}";
+                    return data;
                 }
             }
         }
