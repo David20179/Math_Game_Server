@@ -15,6 +15,7 @@ namespace Math_Game_Server
     internal class DataBase
     {
         private static string dataBasePath = @"Data Source=.\SQLEXPRESS; Initial Catalog=Math_Game; Integrated Security=SSPI";
+        //show all data related to database
         public static DataTable show(String commandString)
         {
             DataTable dt = new DataTable();
@@ -39,6 +40,7 @@ namespace Math_Game_Server
             }
             return dt;
         }
+        //return the number of users
         public static int idNumber()
         {
             int amount = 0;
@@ -247,7 +249,7 @@ namespace Math_Game_Server
 
                     }
                     Skipped: 
-                    command.CommandText = "SELECT TOP 5 user_name, score, date FROM Scores INNER JOIN Users ON Scores.user_id = Users.user_id ORDER BY score DESC;";
+                    command.CommandText = "SELECT TOP 20 u.user_name, s.score, s.date FROM ( SELECT *, ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY score DESC, date DESC) AS rn FROM Scores ) s INNER JOIN Users u ON s.user_id = u.user_id WHERE s.rn = 1 ORDER BY s.score DESC;";
                     String formatedDate = "";
                     String data = "{ \"Scores\": [";
                     try
@@ -313,6 +315,34 @@ namespace Math_Game_Server
                     data = data.Remove(lstIndex, 2);
                     data += "]}";
                     return data;
+                }
+            }
+        }
+        public static bool showUserExistence(String userName, String password)
+        {
+            using (SqlConnection connection = new SqlConnection(dataBasePath))
+            {
+                using (SqlCommand command = connection.CreateCommand())
+                {
+                    command.CommandText = "SELECT user_name FROM Users WHERE user_name = '" + userName + "' AND password = '" + password + "'";
+                    try
+                    {
+                        connection.Open();
+                        object recive = command.ExecuteScalar();
+                        if ( recive != null)
+                        {
+                            return true;
+                        }
+                        else
+                        {
+                            return false;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(ex.Message);
+                        return false;
+                    }
                 }
             }
         }

@@ -80,10 +80,10 @@ namespace Math_Game_Server
                     Console.WriteLine(request);
                     switch (request.Url.AbsolutePath)
                     {
-                        case "/sendUserName":
-                            jsonResponse = HandlePostRegister(request, out int statusCode);
-                            Console.WriteLine(statusCode);
-                            response.StatusCode = statusCode;
+                        case "/login":
+                            jsonResponse = HandleUserLogin(request, out int statusLogin);
+                            Console.WriteLine(statusLogin);
+                            response.StatusCode = statusLogin;
                             break;
                         /*case "/score":
                             Console.WriteLine("Working score");
@@ -93,6 +93,11 @@ namespace Math_Game_Server
                         case "/highscore":
                             jsonResponse = HandleGetHighScore(request, out int statusHighScore);
                             response.StatusCode = statusHighScore;
+                            break;
+                        case "/registration":
+                            jsonResponse = HandlePostRegister(request, out int statusRegistration);
+                            Console.WriteLine(statusRegistration);
+                            response.StatusCode = statusRegistration;
                             break;
                         default:
                             jsonResponse = "{\"error\": \"Endpoint not found.\"}";
@@ -134,7 +139,43 @@ namespace Math_Game_Server
                 Console.WriteLine($"Unexpected error: {ex.Message}");
             }
         }
-
+        private string HandleUserLogin(HttpListenerRequest request , out int statusCode)
+        {
+            try
+            {
+                using (var reader = new StreamReader(request.InputStream, request.ContentEncoding)) 
+                {
+                    string requestBody = reader.ReadToEnd();
+                    dynamic userData = Newtonsoft.Json.JsonConvert.DeserializeObject(requestBody);
+                    string name = userData["USER_NAME"]?.ToString();
+                    string password = userData["USER_PASSWORD"]?.ToString();
+                    if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(password))
+                    {
+                        bool exist = DataBase.showUserExistence(name, password);
+                        if (exist)
+                        {
+                            statusCode = (int)HttpStatusCode.Created;
+                            return $"{{\"username\": \"{name}\"}}";
+                        }
+                        else
+                        {
+                            statusCode = (int)HttpStatusCode.OK;
+                            return "{\"error\": \"Failed to login user.\"}";
+                        }
+                    }
+                    else
+                    {
+                        statusCode = (int)HttpStatusCode.BadRequest;
+                        return "{\"error\": \"Name cannot be empty.\"}";
+                    }
+                }
+            }
+            catch (Exception exp)
+            {
+                statusCode = (int)HttpStatusCode.InternalServerError;
+                return $"{{\"error\": \"Error processing registration: {exp.Message}\"}}";
+            }
+        }
         private string HandlePostRegister(HttpListenerRequest request, out int statusCode)
         {
             try
@@ -144,14 +185,15 @@ namespace Math_Game_Server
                     string requestBody = reader.ReadToEnd();
                     dynamic userData = Newtonsoft.Json.JsonConvert.DeserializeObject(requestBody);
                     string name = userData["USER_NAME"]?.ToString();
+                    string password = userData["USER_PASSWORD"]?.ToString();
 
-                    if (!string.IsNullOrEmpty(name))
+                    if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(password))
                     {
                         int userId = DataBase.idNumber();
                         string generatedUsername = $"{name}#" + userId;
 
                         // Insert into the database
-                        string command = $"INSERT INTO Users (user_id, user_name) VALUES ({userId}, '{generatedUsername}')";
+                        string command = $"INSERT INTO Users (user_id, user_name, password) VALUES ({userId}, '{generatedUsername}', '{password}')";
                         string result = DataBase.userAdd(command);
 
                         if (result.Equals("Success"))
